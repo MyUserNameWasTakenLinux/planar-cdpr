@@ -73,34 +73,52 @@ conn, addr = server_socket.accept()
 print(f"Connected by {addr}")
 
 
-video_capture = cv2.VideoCapture(2)
+video_capture = cv2.VideoCapture("TestVideo.mp4")
 success, frame = video_capture.read()
 
 # Index, pin, pout
 calibration = [0, np.zeros(shape=(2, 4)), np.array([[30, 34, 34, 30], [41, 41, 35, 35]])]
 
 H = None
+roi = None
 
+# Calibration phase
 while success:
-    cv2.imshow("Frame", cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+    cv2.imshow("Frame", frame)
     cv2.setMouseCallback("Frame", get_pixel_position, calibration)
 
     if calibration[0] == 4:
         H = get_homography_matrix(calibration[1], calibration[2])
-        calibration[0] = 5
-    
-    if calibration[0] == 5 and pos_changed:
-        point = np.array([[current_mouse_pos[0]], [current_mouse_pos[1]], [1]])
-        point = np.matmul(H, point)
-        point = point[:2] / point[2]
-        print("Point: ", point)
-        conn.sendall(f"{point[0, 0]}, {point[1, 0]}\n".encode())
-        pos_changed = False
+        roi = cv2.selectROI("Frame", frame, fromCenter=False, showCrosshair=True)
+        cv2.destroyWindow("Frame")
+        break
 
-    if cv2.waitKey(1) & 0xFF == ord("q"):
+    if cv2.waitKey(30) & 0xFF == 27:
         print("Exiting")
         break
 
+    success, frame = video_capture.read()
+
+# Now we have the homography matrix
+success, frame = video_capture.read()
+tracker = cv2.TrackerCSRT_create()
+tracker.init(frame, roi)
+while success:
+    cv2.imshow("Tracking", frame)
+
+    s, boundbox = tracker.update(frame)
+    if s:
+        x, y, _, _ = [int(v) for v in boundbox]
+        point = np.array([[x], [y], [1]])
+        point = np.matmul(H, point)
+        point = point[:2] / point[2]
+        conn.sendall(f"{point[0, 0]}, {point[1, 0]}".encode())
+    else:
+        print("FAIL")
+
+    if cv2.waitKey(30) & 0xFF == 27:
+        print("Exiting")
+        break
     success, frame = video_capture.read()
 
 # H = get_homography_matrix(calibration[1], calibration[2])
