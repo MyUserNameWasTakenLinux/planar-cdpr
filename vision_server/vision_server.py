@@ -61,7 +61,6 @@ def get_pixel_position(event, x, y, flags, param):
             current_mouse_pos[1] = y
 
 
-
 # Set up the TCP server
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind(("0.0.0.0", 65432))  # Bind to all interfaces on port 65432
@@ -73,11 +72,13 @@ conn, addr = server_socket.accept()
 print(f"Connected by {addr}")
 
 
-video_capture = cv2.VideoCapture("TestVideo.mp4")
+video_capture = cv2.VideoCapture(1)
+# video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 900)
+# video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 900)
 success, frame = video_capture.read()
 
 # Index, pin, pout
-calibration = [0, np.zeros(shape=(2, 4)), np.array([[30, 34, 34, 30], [41, 41, 35, 35]])]
+calibration = [0, np.zeros(shape=(2, 4)), np.array([[30, 50, 30, 20], [40, 30, 20, 30]])]
 
 H = None
 roi = None
@@ -108,16 +109,25 @@ while success:
 
     s, boundbox = tracker.update(frame)
     if s:
-        x, y, _, _ = [int(v) for v in boundbox]
-        point = np.array([[x], [y], [1]])
+        x, y, w, h = [int(v) for v in boundbox]
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green color for bounding box
+        cv2.imshow("Tracking", frame)
+        point = np.array([[x + (w / 2)], [y + (h / 2)], [1]])
         point = np.matmul(H, point)
         point = point[:2] / point[2]
+        point[0, 0] = point[0, 0]
+        point[1, 0] = point[1, 0]
+        print("Sent: ", point[0, 0], point[1, 0])
         conn.sendall(f"{point[0, 0]}, {point[1, 0]}".encode())
+        time.sleep(3)
     else:
         print("FAIL")
+        conn.sendall(f"-500.0, -500.0".encode())
+        break
 
     if cv2.waitKey(30) & 0xFF == 27:
         print("Exiting")
+        conn.sendall(f"-500.0, -500.0".encode())
         break
     success, frame = video_capture.read()
 
