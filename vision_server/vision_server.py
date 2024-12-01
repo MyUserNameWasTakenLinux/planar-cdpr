@@ -104,6 +104,7 @@ while success:
 success, frame = video_capture.read()
 tracker = cv2.TrackerCSRT_create()
 tracker.init(frame, roi)
+prev_time = time.time()
 while success:
     cv2.imshow("Tracking", frame)
 
@@ -115,11 +116,11 @@ while success:
         point = np.array([[x + (w / 2)], [y + (h / 2)], [1]])
         point = np.matmul(H, point)
         point = point[:2] / point[2]
-        point[0, 0] = point[0, 0]
-        point[1, 0] = point[1, 0]
-        print("Sent: ", point[0, 0], point[1, 0])
-        conn.sendall(f"{point[0, 0]}, {point[1, 0]}".encode())
-        time.sleep(3)
+        cur_time = time.time()
+        if cur_time - prev_time > 1:
+            print("Sent: ", point[0, 0], point[1, 0])
+            conn.sendall(f"{point[0, 0]}, {point[1, 0]}".encode())
+            prev_time = cur_time
     else:
         print("FAIL")
         conn.sendall(f"-500.0, -500.0".encode())
