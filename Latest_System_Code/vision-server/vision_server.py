@@ -85,7 +85,7 @@ roi = None
 # Initial Coordinates
 x_old = 30
 y_old = 30
-
+prev_time = time.time()
 # Calibration phase
 while success:
     cv2.imshow("Frame", frame)
@@ -126,12 +126,13 @@ while success:
         point = np.array([[x + (w / 2)], [y + (h / 2)], [1]])
         point = np.matmul(H, point)
         point = point[:2] / point[2]
-
-        if (math.sqrt((point[0, 0] - x_old)**2 + (point[1, 0] - y_old)**2) >= 2):
+        cur_time = time.time()
+        if (math.sqrt((point[0, 0] - x_old)**2 + (point[1, 0] - y_old)**2) >= 2) and (cur_time - prev_time > 1.5):
             print("Sent: ", point[0, 0], point[1, 0])
             conn.sendall(f"{point[0, 0]}, {point[1, 0]}".encode())
             x_old = point[0, 0]
             y_old = point[1, 0]
+            prev_time = cur_time
         
     else:
         print("FAIL")
