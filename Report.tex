@@ -88,25 +88,98 @@ is a robot that can continously track and follow objects, but cannot pick them u
 
 
 \subsection{Introduction to Cable-Driven Robots}
+A cable-driven robot is actuated using cables. The main parts of a cable-driven robot include winches, cables, motors, and 
+a mobile platform/end-effector. The active length of the cables are controlled by the winches, and this is what determines the position of
+the end-effector. Changing the active length of the cables changes the position of the end-effector.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{Cabledrivenrobot.png}
+\caption{A cable-driven robot from \cite{pott2018cable}.}
+\label{fig:figure6}
+\end{figure}
+
+Cable-driven robots offer one main advantage over serial robots: they are light weight. This is because, unlike the serial case, the
+motors do not have to bear the weight of other motors. Therefore, much higher speeds can be achieved. 
 
 \section{Methodology}
-Describe the methods or techniques used to conduct the research. Include any specific algorithms, models, or tools you implemented.
+
+\subsection{Inverse Kinematics Model}
 Derivation for the inverse kinematics model.
 Logic behind picking constant time over constant motor velocity.
-Planar Homography.
 
+\subsection{Planar Homography}
+
+Since the camera does not have an overhead view of the workspace, the relationship $(x, y) = s(u, v)$ does not hold. Here
+$(x, y)$ is the physical coordinate, $s$ is a scale factor, and $(u, v)$ is the pixel coordinate. There is a linear
+relationship between the pixel coordinates and physical coordinates in plane described by a homography matrix. The homography
+matrix is invertible, because unlike the general case where we a translating between a 3D point in space and a pixel in a 2D image,
+we are translating between a 2D plane in reality and a 2D pixel space. The homography matrix has 8 degrees of freedom, $h_1, \dots, h_8$.
+
+$$ H =
+\begin{pmatrix}
+h_1 & h_2 & h_3 \\
+h_4 & h_5 & h_6 \\
+h_7 & h_8 & 1 \\
+\end{pmatrix}
+$$
+
+Let $X_1, X_2, X_3, X_4$ be four points on a physical plane in homogeneous coordinates and $x_1, x_2, x_3, x_4$ the corresponding pixel coordinates in homogeneous form.
+Then the following equations
+
+\begin{align*}
+X_1 &= Hx_1 \\
+X_2 &= Hx_2 \\
+X_3 &= Hx_3 \\
+X_4 &= Hx_4
+\end{align*}
+
+define a system of linear equations, which can be solved for $h_1, \dots, h_8$. This is why there is a calibration phase before the robot starts moving. Now
+say there is a point on the video feed, $p$, whose physical coordinate is needed. Applying the homography matrix on the pixel coordinate, $P = Hp$, we get
+$P$, the physical coordinate corresponding to $p$.
+
+\subsection{Vision}
+We used OpenCV for object tracking and everything related to computer vision. More specifically, we used OpenCV's CSRT
+tracker. The figure below shows the control flow for the vision system.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{VisionSystem.jpg}
+\caption{Control flow for the vision system.}
+\label{fig:figure4}
+\end{figure}
+
+First, marked points are selected in the video
+feed to calibrate the homography matrix. Next, the user selects the target to be tracked. Depending on whether OpenCV
+successfully tracks the object in the most recent frame, the path diverges into two. If the tracking fails, the user has
+to select the target again. If the tracking is successful, the server sends the physical coordinates to the EV3 and continues
+to track the target.
 
 \section{Results}
 Present your findings clearly using text, tables, and figures. Reference all figures and tables in the text.
+
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{TmpGraph.png}
+\caption{A temporary error graph.}
+\label{fig:figure5}
+\end{figure}
 
 \section{Discussion}
 Analyze and interpret the results. Discuss their implications, limitations, and potential future work.
 Could talk about why the end-effector could not be done here.
 Remember to discuss the pulley problem. Using Lego connector pins as pulleys causes problems. We 3D printed pulleys
-but they would slip. Limitations with the 3D printer precision.
+but they would slip. Limitations with the 3D printer precision. Also in the discussion should be why the error
+values for the end-effector position are so low. Also should be talked about sources of error.
+It's a planar robot, which means that it cannot exert force perpendicular to the plane. If weight is added to the end-effector
+there is no way the robot can counteract that force. Which will cause the cables to bend. There is a mechanism we thought
+about but did not have the time to implement. Compare the precision of the cable-driven robot with the lab2 robot arm that was
+made using the same components. Another thing to include: why Broyden's method could not be used. If the jacobian is not
+perfect, incorrect changes in the cable lengths would break the system.
 
 \section{Conclusion}
-Summarize the key findings and their significance. Suggest directions for further research.
+Summarize the key findings and their significance. Suggest directions for further research (tension model?).
 
 
 \bibliographystyle{plain}
@@ -115,5 +188,8 @@ Summarize the key findings and their significance. Suggest directions for furthe
 \appendix
 \section{Appendix: Additional Details}
 Code snippets that are important. Instructions on how to run the project (setting up srccpy and obsstudio).
+
+\subsection{Instructions to Run the Project}
+
 
 \end{document}
